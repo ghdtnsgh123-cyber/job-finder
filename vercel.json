@@ -1,0 +1,9 @@
+{
+  "buildCommand": "npm run build",
+      "functions": {
+        "api/index.mjs": {
+          "includeFiles": "dist/server/**,dist/client/**"
+        }
+      },
+  "rewrites": [{ "source": "/(.*)", "destination": "/api" }]
+}
