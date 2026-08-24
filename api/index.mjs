@@ -20,10 +20,23 @@ async function assetsFetch(request) {
 
 export default async function handler(req, res) {
   const url = new URL(req.url, `https://${req.headers.host ?? "localhost"}`);
+  const originalPath = url.searchParams.get("path");
+  const requestUrl = new URL(url);
+  if (originalPath) {
+    requestUrl.pathname = originalPath;
+    requestUrl.search = "";
+  }
   const headers = new Headers();
   for (const [key, value] of Object.entries(req.headers)) if (typeof value === "string") headers.set(key, value);
+  if (requestUrl.pathname.startsWith("/_next/")) {
+    const assetResponse = await assetsFetch(new Request(requestUrl, { headers }));
+    res.statusCode = assetResponse.status;
+    assetResponse.headers.forEach((value, key) => res.setHeader(key, value));
+    res.end(Buffer.from(await assetResponse.arrayBuffer()));
+    return;
+  }
   const hasBody = !["GET", "HEAD"].includes(req.method ?? "GET");
-  const request = new Request(url, { method: req.method, headers, body: hasBody ? req : undefined, duplex: hasBody ? "half" : undefined });
+  const request = new Request(requestUrl, { method: req.method, headers, body: hasBody ? req : undefined, duplex: hasBody ? "half" : undefined });
   const response = await worker.fetch(request, { ASSETS: { fetch: assetsFetch } }, { waitUntil() {}, passThroughOnException() {} });
   res.statusCode = response.status;
   response.headers.forEach((value, key) => res.setHeader(key, value));
