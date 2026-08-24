@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import recruitmentData from "../jobs.json";
 
 type Job = {
   id: number;
@@ -10,28 +11,64 @@ type Job = {
   title: string;
   category: string;
   duties: string;
-  type: "인턴";
+  type: "인턴" | "신입";
+  intern: boolean;
   location: string;
   region: "대전" | "수도권" | "기타";
-  duration: "방학 단기" | "3개월 이상" | "6개월";
+  duration: string;
   deadline: string;
   deadlineDays: number | null;
   pay: string;
   eligibility: string;
   skills: string[];
   dataAnalysis: boolean;
-  detailLevel: "구체적" | "보통";
+  detailLevel: "구체적" | "보통" | "";
   broadExperience: boolean;
 };
 
-const jobs: Job[] = [
-  { id: 1, company: "한국과학기술원", size: "중견·중소", logo: "KA", title: "실험 데이터 분석 인턴", category: "데이터·분석", duties: "센서 실험 데이터 정리와 결과 리포트 작성", type: "인턴", location: "대전 유성구", region: "대전", duration: "방학 단기", deadline: "D-18", deadlineDays: 18, pay: "급여 210만원/월", eligibility: "물리학·자연과학 전공 우대", skills: ["Python", "데이터 분석"], dataAnalysis: true, detailLevel: "구체적", broadExperience: true },
-  { id: 2, company: "LG디스플레이", size: "대기업", logo: "LG", title: "공정 데이터 분석 체험형 인턴", category: "반도체·디스플레이", duties: "공정 지표를 분석하고 개선 아이디어를 제안", type: "인턴", location: "경기 파주", region: "수도권", duration: "3개월 이상", deadline: "D-24", deadlineDays: 24, pay: "급여 220만원/월", eligibility: "이공계 전공자", skills: ["Excel", "통계"], dataAnalysis: true, detailLevel: "구체적", broadExperience: true },
-  { id: 3, company: "토스", size: "대기업", logo: "T", title: "서비스 지표 운영 인턴", category: "데이터·분석", duties: "서비스 지표를 모니터링하고 운영 인사이트를 정리", type: "인턴", location: "서울 강남", region: "수도권", duration: "3개월 이상", deadline: "D-7", deadlineDays: 7, pay: "급여 200만원/월", eligibility: "전공 무관", skills: ["SQL", "문제 해결"], dataAnalysis: true, detailLevel: "구체적", broadExperience: true },
-  { id: 4, company: "국가핵융합연구소", size: "중견·중소", logo: "NF", title: "플라즈마 연구 지원 인턴", category: "연구·실험", duties: "실험 장비 기록과 연구 데이터 관리 지원", type: "인턴", location: "대전 유성구", region: "대전", duration: "방학 단기", deadline: "D-31", deadlineDays: 31, pay: "급여 190만원/월", eligibility: "물리학과 재학생·졸업예정자", skills: ["실험 기록", "문서 작성"], dataAnalysis: false, detailLevel: "구체적", broadExperience: true },
-  { id: 5, company: "카카오페이", size: "대기업", logo: "KP", title: "데이터 서비스 리서치 인턴", category: "데이터·분석", duties: "사용자 데이터를 살펴보고 리서치 결과를 공유", type: "인턴", location: "경기 성남", region: "수도권", duration: "6개월", deadline: "D-4", deadlineDays: 4, pay: "급여 210만원/월", eligibility: "전공 무관", skills: ["리서치", "Tableau"], dataAnalysis: true, detailLevel: "보통", broadExperience: false },
-  { id: 6, company: "한화시스템", size: "대기업", logo: "HS", title: "R&D 프로젝트 인턴", category: "연구·실험", duties: "R&D 프로젝트 운영 지원", type: "인턴", location: "서울 중구", region: "수도권", duration: "6개월", deadline: "상시", deadlineDays: null, pay: "급여 별도 협의", eligibility: "이공계 전공자", skills: ["프로젝트", "커뮤니케이션"], dataAnalysis: false, detailLevel: "보통", broadExperience: true },
-];
+type RecruitmentRecord = (typeof recruitmentData)[number];
+
+function toRegion(location: string): Job["region"] {
+  if (location.includes("대전")) return "대전";
+  if (/(서울|경기|인천)/.test(location)) return "수도권";
+  return "기타";
+}
+
+function formatDeadline(value: string) {
+  if (!value || value.length !== 8) return "";
+  return `${value.slice(0, 4)}.${value.slice(4, 6)}.${value.slice(6, 8)}`;
+}
+
+const jobs: Job[] = (recruitmentData as RecruitmentRecord[]).map((record) => {
+  const title = record.recrutPbancTtl ?? "";
+  const category = record.ncsCdNmLst ?? "";
+  const employmentType = record.hireTypeNmLst ?? "";
+  const location = record.workRgnNmLst ?? "";
+  const searchableText = `${title} ${category}`;
+  const duties = "";
+  return {
+    id: record.recrutPblntSn,
+    company: record.instNm ?? "",
+    size: "",
+    logo: "",
+    title,
+    category,
+    duties,
+    type: employmentType.includes("인턴") || title.includes("인턴") ? "인턴" : "신입",
+    intern: employmentType.includes("인턴") || title.includes("인턴"),
+    location,
+    region: toRegion(location),
+    duration: "",
+    deadline: formatDeadline(record.pbancEndYmd ?? ""),
+    deadlineDays: typeof record.decimalDay === "number" ? record.decimalDay : null,
+    pay: "",
+    eligibility: record.aplyQlfcCn ?? "",
+    skills: [],
+    dataAnalysis: /데이터|분석/.test(searchableText),
+    detailLevel: duties ? "구체적" : "",
+    broadExperience: false,
+  };
+});
 
 type Filters = { intern: boolean; data: boolean; region: boolean; short: boolean; long: boolean; deadlineKnown: boolean; deadlineRoom: boolean; detailed: boolean; broad: boolean };
 const emptyFilters: Filters = { intern: false, data: false, region: false, short: false, long: false, deadlineKnown: false, deadlineRoom: false, detailed: false, broad: false };
@@ -113,7 +150,7 @@ export default function Home() {
           </button>
           <div className="card-tags"><span>{job.type}</span><span>{job.category}</span><span>{job.location}</span><span>{job.duration}</span><span className="score-chip">추천 {score(job)}점</span></div>
           <button className={`card-save ${saved.includes(job.id) ? "saved" : ""}`} onClick={() => toggleSaved(job.id)} aria-label={`${job.company} ${job.title} 저장`}>{saved.includes(job.id) ? "♥" : "♡"}</button>
-          {expanded === job.id && <div className="card-detail"><div><b>주요 업무</b><p>{job.duties}</p></div><div><b>지원 자격</b><p>{job.eligibility}</p></div><div><b>인턴 조건</b><p>{job.duration} · {job.pay}</p></div><div><b>추천 근거</b><p>{job.dataAnalysis ? "데이터 분석 업무 포함 · " : ""}{job.region} 근무 · {job.detailLevel} 업무 안내{job.broadExperience ? " · 다양한 경험" : ""}</p></div></div>}
+          {expanded === job.id && <div className="card-detail"><div><b>주요 업무</b><p>{job.duties}</p></div><div><b>지원 자격</b><p>{job.eligibility}</p></div><div><b>인턴 조건</b><p>{[job.duration, job.pay].filter(Boolean).join(" · ")}</p></div><div><b>추천 근거</b><p>{[job.dataAnalysis ? "데이터 분석 업무 포함" : "", job.region !== "기타" ? `${job.region} 근무` : "", job.detailLevel ? `${job.detailLevel} 업무 안내` : "", job.broadExperience ? "다양한 경험" : ""].filter(Boolean).join(" · ")}</p></div></div>}
         </article>)}
         {!visibleJobs.length && <div className="no-results"><strong>조건에 맞는 공고가 없어요.</strong><p>필터를 초기화하고 전체 공고를 확인해보세요.</p><button onClick={() => { setFilters(emptyFilters); setSavedOnly(false); }}>전체 공고 보기</button></div>}
       </div>
